@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	model "studyproject/models"
 	"time"
+
+	model "github.com/iamqwezxc/pingUI/Backend/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"

@@ -4,10 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	model "studyproject/models"
+
+	model "github.com/iamqwezxc/pingUI/Backend/models"
 )
 
-func DBTakeTable() []model.User {
+func DBTakeTable() {
 	db := DBConnect(model.ConnStrUsers)
 	rows, err := db.Query("SELECT id, full_name, Username, Email, Password_Hash, Role FROM users")
 	if err != nil {
@@ -28,6 +29,7 @@ func DBTakeTable() []model.User {
 		fmt.Println(id, full_name, Username, Email, Password_Hash, Role)
 	}
 	defer db.Close()
+
 }
 
 func DBConnect(connStr string) *sql.DB {

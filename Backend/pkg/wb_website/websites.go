@@ -2,8 +2,9 @@ package websites
 
 import (
 	"net/http"
-	database "studyproject/pkg/db_database"
-	JSONJWT "studyproject/pkg/json_jwt"
+
+	database "github.com/iamqwezxc/pingUI/Backend/pkg/db_database"
+	JSONJWT "github.com/iamqwezxc/pingUI/Backend/pkg/json_jwt"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,11 +12,11 @@ import (
 func WBStarsWebSite() {
 	r := gin.Default()
 
-	r.GET("/user", func(c *gin.Context) {
+	r.GET("/regist", func(c *gin.Context) {
 		c.String(http.StatusOK, "Главная страница")
 	})
 
-	r.POST("/user", func(c *gin.Context) {
+	r.POST("/regist", func(c *gin.Context) {
 		user, err := JSONJWT.JSONtoStruct(c)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

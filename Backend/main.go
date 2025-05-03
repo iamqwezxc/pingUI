@@ -3,11 +3,11 @@ package main
 import (
 	_ "github.com/lib/pq"
 
-	model "studyproject/models"
-	database "studyproject/pkg/db_database"
+	model "github.com/iamqwezxc/pingUI/Backend/models"
+	database "github.com/iamqwezxc/pingUI/Backend/pkg/db_database"
 
 	//JWTs "studyproject/pkg/json_jwt"
-	website "studyproject/pkg/wb_website"
+	website "github.com/iamqwezxc/pingUI/Backend/pkg/wb_website"
 )
 
 func main() {
@@ -16,5 +16,7 @@ func main() {
 
 	database.DBConnect(model.ConnStrUsers)
 	website.WBStarsWebSite()
+
+	database.DBTakeTable()
 
 }
