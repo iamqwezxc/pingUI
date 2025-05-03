@@ -11,10 +11,8 @@ import (
 )
 
 func main() {
-	//sssss
 
 	//http.HandleFunc("/user", JWTs.AuthMiddleware(JWTs.ProtectedHandler))
-	//http.ListenAndServe(":8080", nil)
 
 	database.DBConnect(model.ConnStrUsers)
 	website.WBStarsWebSite()

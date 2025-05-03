@@ -2,9 +2,33 @@ package databasepostgres
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	model "studyproject/models"
 )
+
+func DBTakeTable() []model.User {
+	db := DBConnect(model.ConnStrUsers)
+	rows, err := db.Query("SELECT id, full_name, Username, Email, Password_Hash, Role FROM users")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		var full_name string
+		var Username string
+		var Email string
+		var Password_Hash string
+		var Role string
+		if err := rows.Scan(&id, &full_name, &Username, &Email, &Password_Hash, &Role); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(id, full_name, Username, Email, Password_Hash, Role)
+	}
+	defer db.Close()
+}
 
 func DBConnect(connStr string) *sql.DB {
 	db, err := sql.Open("postgres", connStr)
@@ -17,7 +41,6 @@ func DBConnect(connStr string) *sql.DB {
 	}
 
 	return db
-
 }
 
 func DBAddDataUsers(user model.User) {
