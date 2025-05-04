@@ -3,6 +3,7 @@ package websites
 import (
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	model "github.com/iamqwezxc/pingUI/Backend/models"
@@ -31,6 +32,7 @@ func WBStarsWebSite() {
 			if err := rows.Scan(&user_id, &full_name, &Username, &Email, &Password_Hash, &Role); err != nil {
 				log.Fatal(err)
 			}
+			c.String(http.StatusOK, strconv.Itoa(user_id)+" ")
 			c.String(http.StatusOK, full_name+" ")
 			c.String(http.StatusOK, Username+" ")
 			c.String(http.StatusOK, Email+" ")
