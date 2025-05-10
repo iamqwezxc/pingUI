@@ -1,6 +1,7 @@
 package websites
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -20,6 +21,19 @@ func WBStarsWebSite() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+
+		defer db.Close()
+
+	})
+
+	r.GET("/login", func(c *gin.Context) {
+		c.String(http.StatusOK, "Логин")
+	})
+
+	r.POST("/login", func(c *gin.Context) {
+		db := database.DBConnect(model.ConnStrUsers)
+
+		c.String(http.StatusOK, fmt.Sprintf("%v", db))
 
 		defer db.Close()
 
