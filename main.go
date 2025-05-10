@@ -13,7 +13,6 @@ import (
 func main() {
 
 	//http.HandleFunc("/user", JWTs.AuthMiddleware(JWTs.ProtectedHandler))
-	database.DBTakeTable()
 	database.DBConnect(model.ConnStrUsers)
 	website.WBStarsWebSite()
 

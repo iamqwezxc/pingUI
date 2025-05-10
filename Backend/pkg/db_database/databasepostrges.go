@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/http"
 
+	"github.com/gin-gonic/gin"
 	model "github.com/iamqwezxc/pingUI/Backend/models"
 )
 
@@ -59,4 +61,30 @@ func DBAddDataUsers(user model.User) {
 		log.Fatal(err)
 	}
 	defer db.Close()
+}
+
+func TakeTable(db *sql.DB, c *gin.Context, tableName string) error {
+	rows, err := db.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	cols, _ := rows.Columns()
+	values := make([]interface{}, len(cols))
+	for i := range values {
+		values[i] = new(interface{})
+	}
+
+	for rows.Next() {
+		rows.Scan(values...)
+		for i, v := range values {
+			if i > 0 {
+				c.String(http.StatusOK, "|")
+			}
+			c.String(http.StatusOK, fmt.Sprintf("%v", *(v.(*interface{}))))
+		}
+		c.String(http.StatusOK, "\n")
+	}
+	return nil
 }
