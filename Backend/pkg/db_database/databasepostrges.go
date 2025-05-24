@@ -54,7 +54,7 @@ func DBAddDataUsers(user model.User) {
 		user.FullName,
 		user.Username,
 		user.Email,
-		user.Password,
+		user.PasswordFirst,
 		user.Role,
 	)
 	if err != nil {

@@ -45,7 +45,7 @@ func WBStarsWebSite() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		user.Password, err = JSONJWT.HashPassword(user.Password)
+		user.PasswordFirst, err = JSONJWT.HashPassword(user.PasswordFirst)
 		database.DBAddDataUsers(user)
 	})
 
