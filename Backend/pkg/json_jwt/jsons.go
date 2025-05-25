@@ -1,12 +1,10 @@
-package jsons
+package pkg
 
 import (
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
-
-	model "github.com/iamqwezxc/pingUI/Backend/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -15,13 +13,14 @@ import (
 
 var secretKey = []byte("my_secret_key")
 
-func JSONtoStruct(c *gin.Context) (model.User, error) {
-	var user model.User
-	if err := c.ShouldBindJSON(&user); err != nil {
+func JSONtoStruct[T any](c *gin.Context) (T, error) {
+	var data T
+	err := c.ShouldBindJSON(&data)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return model.User{}, err
+		return data, err
 	}
-	return user, nil
+	return data, nil
 }
 
 func ParseToken(tokenString string) (*jwt.Token, error) {

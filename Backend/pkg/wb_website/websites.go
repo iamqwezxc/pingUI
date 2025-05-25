@@ -1,4 +1,4 @@
-package websites
+package pkg
 
 import (
 	"fmt"
@@ -28,6 +28,7 @@ func WBStarsWebSite() {
 
 	r.GET("/login", func(c *gin.Context) {
 		c.String(http.StatusOK, "Логин")
+
 	})
 
 	r.POST("/login", func(c *gin.Context) {
@@ -40,7 +41,8 @@ func WBStarsWebSite() {
 	})
 
 	r.POST("/regist", func(c *gin.Context) {
-		user, err := JSONJWT.JSONtoStruct(c)
+		user, err := JSONJWT.JSONtoStruct[model.User](c)
+
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
