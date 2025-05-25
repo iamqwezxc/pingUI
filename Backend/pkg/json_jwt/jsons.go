@@ -17,7 +17,10 @@ func JSONtoStruct[Tipe any](c *gin.Context) (Tipe, error) {
 	var data Tipe
 	err := c.ShouldBindJSON(&data)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"succes": false,
+			"Error":  err.Error(),
+		})
 
 		return data, err
 	}
