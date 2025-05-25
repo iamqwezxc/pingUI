@@ -47,8 +47,22 @@ func WBStarsWebSite() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		user.PasswordFirst, err = JSONJWT.HashPassword(user.PasswordFirst)
-		database.DBAddDataUsers(user)
+
+		if user.PasswordFirst == user.PasswordSecond {
+			c.JSON(http.StatusOK, gin.H{
+				"success": true,
+			})
+
+			user.PasswordFirst, err = JSONJWT.HashPassword(user.PasswordFirst)
+			database.DBAddDataUsers(user)
+
+		} else {
+			c.JSON(http.StatusBadGateway, gin.H{
+				"succes": false,
+				"Error":  err.Error(),
+			})
+
+		}
 	})
 
 	r.Run(":8080")

@@ -11,15 +11,19 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var secretKey = []byte("my_secret_key")
+var secretKey = []byte("my_saecret_key")
 
-func JSONtoStruct[T any](c *gin.Context) (T, error) {
-	var data T
+func JSONtoStruct[Tipe any](c *gin.Context) (Tipe, error) {
+	var data Tipe
 	err := c.ShouldBindJSON(&data)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+
 		return data, err
 	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+	})
 	return data, nil
 }
 
