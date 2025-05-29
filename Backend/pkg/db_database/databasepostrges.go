@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	model "github.com/iamqwezxc/pingUI/Backend/models"
+	JSONJWT "github.com/iamqwezxc/pingUI/Backend/pkg/json_jwt"
 )
 
 func DBConnect(connStr string) *sql.DB {
@@ -21,6 +23,90 @@ func DBConnect(connStr string) *sql.DB {
 	}
 
 	return db
+}
+func DBUpdateUserByID(userID int, userUpdates model.User) error {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	var setClauses []string
+	var args []interface{}
+	argCounter := 1
+
+	if userUpdates.FullName != "" {
+		setClauses = append(setClauses, fmt.Sprintf("full_name = $%d", argCounter))
+		args = append(args, userUpdates.FullName)
+		argCounter++
+	}
+	if userUpdates.Username != "" {
+		setClauses = append(setClauses, fmt.Sprintf("Username = $%d", argCounter))
+		args = append(args, userUpdates.Username)
+		argCounter++
+	}
+	if userUpdates.Email != "" {
+		setClauses = append(setClauses, fmt.Sprintf("Email = $%d", argCounter))
+		args = append(args, userUpdates.Email)
+		argCounter++
+	}
+	if userUpdates.PasswordFirst != "" {
+		hashedPassword, err := JSONJWT.HashPassword(userUpdates.PasswordFirst)
+		if err != nil {
+			log.Printf("Error hashing password for update: %v", err)
+			return fmt.Errorf("failed to hash new password: %w", err)
+		}
+		setClauses = append(setClauses, fmt.Sprintf("Password_Hash = $%d", argCounter))
+		args = append(args, hashedPassword)
+		argCounter++
+	}
+	if userUpdates.Role != "" {
+		setClauses = append(setClauses, fmt.Sprintf("Role = $%d", argCounter))
+		args = append(args, userUpdates.Role)
+		argCounter++
+	}
+
+	if len(setClauses) == 0 {
+		return fmt.Errorf("no fields provided for update")
+	}
+
+	query := fmt.Sprintf("UPDATE users SET %s WHERE user_id = $%d", strings.Join(setClauses, ", "), argCounter)
+	args = append(args, userID)
+
+	result, err := db.Exec(query, args...)
+	if err != nil {
+		log.Printf("Error updating user %d: %v", userID, err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected for user %d update: %v", userID, err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("user with ID %d not found or no data changed", userID)
+	}
+
+	return nil
+}
+
+func DBDeleteUserByID(userID int) error {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	result, err := db.Exec("DELETE FROM users WHERE user_id = $1", userID)
+	if err != nil {
+		log.Printf("Error deleting user %d: %v", userID, err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected for user %d deletion: %v", userID, err)
+
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("user with ID %d not found", userID)
+	}
+	return nil
 }
 
 func DBAddDataUsers(user model.User) {
