@@ -29,6 +29,32 @@ func WBStarsWebSite() {
 
 	})
 
+	r.GET("/courses", func(c *gin.Context) {
+		db := database.DBConnect(model.ConnStrUsers)
+
+		err := database.TakeTable(db, c, "courses")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		defer db.Close()
+
+	})
+
+	r.GET("/lessons", func(c *gin.Context) {
+		db := database.DBConnect(model.ConnStrUsers)
+
+		err := database.TakeTable(db, c, "lessons")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		defer db.Close()
+
+	})
+
 	r.GET("/login", func(c *gin.Context) {
 		c.String(http.StatusOK, "Логин")
 
@@ -67,6 +93,37 @@ func WBStarsWebSite() {
 
 		}
 	})
+
+	r.POST("/courses", func(c *gin.Context) {
+		course, err := JSONJWT.JSONtoStruct[model.Course](c)
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		database.DBAddDataCourse(course)
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+		})
+
+	})
+
+	r.POST("/lessons", func(c *gin.Context) {
+		lesson, err := JSONJWT.JSONtoStruct[model.Lesson](c)
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		database.DBAddDataLesson(lesson)
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+		})
+
+	})
+
 	r.PUT("/users/edit/:id", func(c *gin.Context) {
 		userIDStr := c.Param("id")
 		userID, err := strconv.Atoi(userIDStr)

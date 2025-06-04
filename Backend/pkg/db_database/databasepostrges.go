@@ -124,6 +124,38 @@ func DBAddDataUsers(user model.User) {
 	}
 	defer db.Close()
 }
+
+func DBAddDataCourse(course model.Course) {
+	db := DBConnect(model.ConnStrUsers)
+	_, err := db.Exec(
+		"INSERT INTO courses (title, description, thumbnail_url, instructor_id) VALUES ($1, $2, $3, $4)",
+		course.Title,
+		course.Description,
+		course.Thumbnail_url,
+		course.Instructor_id,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+}
+
+func DBAddDataLesson(lesson model.Lesson) {
+	db := DBConnect(model.ConnStrUsers)
+	_, err := db.Exec(
+		"INSERT INTO lessons (course_id, title, content, video_url, lesson_order) VALUES ($1, $2, $3, $4, $5)",
+		lesson.Course_id,
+		lesson.Title,
+		lesson.Content,
+		lesson.Video_url,
+		lesson.Lesson_order,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+}
+
 func GetSlice(db *sql.DB, tableName string) ([]model.User, error) {
 	rows, err := db.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
 	if err != nil {
