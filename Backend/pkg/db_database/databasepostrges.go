@@ -156,6 +156,34 @@ func DBAddDataLesson(lesson model.Lesson) {
 	defer db.Close()
 }
 
+func DBAddDataMaterial(material model.Material) {
+	db := DBConnect(model.ConnStrUsers)
+	_, err := db.Exec(
+		"INSERT INTO materials (lesson_id, title, file_url, type) VALUES ($1, $2, $3, $4)",
+		material.Lesson_id,
+		material.Title,
+		material.File_url,
+		material.TypeOfMaterial,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+}
+
+func DBAddDataEnrollment(enrollment model.Enrollment) {
+	db := DBConnect(model.ConnStrUsers)
+	_, err := db.Exec(
+		"INSERT INTO enrollments (user_id, course_id) VALUES ($1, $2)",
+		enrollment.User_id,
+		enrollment.Course_id,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+}
+
 func GetSlice(db *sql.DB, tableName string) ([]model.User, error) {
 	rows, err := db.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
 	if err != nil {

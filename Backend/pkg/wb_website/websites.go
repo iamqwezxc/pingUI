@@ -55,15 +55,27 @@ func WBStarsWebSite() {
 
 	})
 
-	r.GET("/login", func(c *gin.Context) {
-		c.String(http.StatusOK, "Логин")
+	r.GET("/materials", func(c *gin.Context) {
+		db := database.DBConnect(model.ConnStrUsers)
+
+		err := database.TakeTable(db, c, "materials")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		defer db.Close()
 
 	})
 
-	r.POST("/login", func(c *gin.Context) {
+	r.GET("/enrollments", func(c *gin.Context) {
 		db := database.DBConnect(model.ConnStrUsers)
 
-		c.String(http.StatusOK, fmt.Sprintf("%v", db))
+		err := database.TakeTable(db, c, "enrollments")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 
 		defer db.Close()
 
@@ -118,6 +130,36 @@ func WBStarsWebSite() {
 		}
 
 		database.DBAddDataLesson(lesson)
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+		})
+
+	})
+
+	r.POST("/materials", func(c *gin.Context) {
+		material, err := JSONJWT.JSONtoStruct[model.Material](c)
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		database.DBAddDataMaterial(material)
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+		})
+
+	})
+
+	r.POST("/enrollments", func(c *gin.Context) {
+		enrollment, err := JSONJWT.JSONtoStruct[model.Enrollment](c)
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		database.DBAddDataEnrollment(enrollment)
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
 		})
@@ -183,6 +225,20 @@ func WBStarsWebSite() {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"success": true, "message": fmt.Sprintf("User %d deleted successfully", userID)})
+	})
+
+	r.GET("/login", func(c *gin.Context) {
+		c.String(http.StatusOK, "Логин")
+
+	})
+
+	r.POST("/login", func(c *gin.Context) {
+		db := database.DBConnect(model.ConnStrUsers)
+
+		c.String(http.StatusOK, fmt.Sprintf("%v", db))
+
+		defer db.Close()
+
 	})
 
 	fmt.Println("Server starting on :8080...")

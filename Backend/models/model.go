@@ -28,3 +28,17 @@ type Lesson struct {
 	Video_url    string `json:"video_url"`
 	Lesson_order int    `json:"lesson_order"`
 }
+
+type Material struct {
+	ID             int    `json:"material_id"`
+	Lesson_id      int    `json:"lesson_id"`
+	Title          string `json:"title"`
+	File_url       string `json:"file_url"`
+	TypeOfMaterial string `json:"type"`
+}
+
+type Enrollment struct {
+	ID        int `json:"enrollment_id"`
+	User_id   int `json:"user_id"`
+	Course_id int `json:"course_id"`
+}
