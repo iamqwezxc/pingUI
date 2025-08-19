@@ -234,3 +234,48 @@ func TakeTable(db *sql.DB, c *gin.Context, tableName string) error {
 	}
 	return nil
 }
+func DBFindUserByGoogleID(googleID string) (*model.User, error) {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	var user model.User
+	err := db.QueryRow("SELECT user_id, full_name, username, email, role, google_id, avatar FROM users WHERE google_id = $1", googleID).
+		Scan(&user.ID, &user.FullName, &user.Username, &user.Email, &user.Role, &user.GoogleID, &user.Avatar)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func DBFindUserByYandexID(yandexID string) (*model.User, error) {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	var user model.User
+	err := db.QueryRow("SELECT user_id, full_name, username, email, role, yandex_id, avatar FROM users WHERE yandex_id = $1", yandexID).
+		Scan(&user.ID, &user.FullName, &user.Username, &user.Email, &user.Role, &user.YandexID, &user.Avatar)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func DBCreateUserFromOAuth(user *model.User) error {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	var userID int
+	err := db.QueryRow(`
+		INSERT INTO users (full_name, email, google_id, yandex_id, avatar, role, username) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7) 
+		RETURNING user_id`,
+		user.FullName, user.Email, user.GoogleID, user.YandexID, user.Avatar, "user", user.Email,
+	).Scan(&userID)
+
+	if err != nil {
+		return err
+	}
+
+	user.ID = userID
+	return nil
+}

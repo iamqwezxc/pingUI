@@ -10,6 +10,9 @@ type User struct {
 	PasswordFirst  string `json:"PasswordFHash"`
 	PasswordSecond string `json:"PasswordSHash"`
 	Role           string `json:"Role"`
+	GoogleID       string `json:"GoogleID"` // Добавьте это поле
+	YandexID       string `json:"YandexID"` // Добавьте это поле
+	Avatar         string `json:"Avatar"`   // Добавьте это поле
 }
 
 type Course struct {
