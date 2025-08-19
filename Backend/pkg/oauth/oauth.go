@@ -28,6 +28,7 @@ func InitOAuthConfig() {
 			"https://www.googleapis.com/auth/userinfo.profile",
 			"openid",
 		},
+
 		Endpoint: google.Endpoint,
 	}
 
