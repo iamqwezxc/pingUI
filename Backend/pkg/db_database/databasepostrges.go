@@ -111,16 +111,34 @@ func DBDeleteUserByID(userID int) error {
 
 func DBAddDataUsers(user model.User) {
 	db := DBConnect(model.ConnStrUsers)
+
+	// Устанавливаем роль по умолчанию если не указана
+	role := user.Role
+	if role == "" {
+		role = "student"
+	} else {
+		// Проверяем валидность роли
+		validRoles := map[string]bool{"student": true, "teacher": true, "admin": true}
+		if !validRoles[role] {
+			role = "student" // fallback to student if invalid
+		}
+	}
+
+	passwordHash := user.PasswordFirst
+	if passwordHash == "" {
+		passwordHash = "oauth_user_no_password"
+	}
+
 	_, err := db.Exec(
 		"INSERT INTO users (full_name, Username, Email, Password_Hash, Role) VALUES ($1, $2, $3, $4, $5)",
 		user.FullName,
 		user.Username,
 		user.Email,
-		user.PasswordFirst,
-		user.Role,
+		passwordHash,
+		role, // Используем проверенную роль
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Error adding user: %v", err)
 	}
 	defer db.Close()
 }
@@ -260,22 +278,52 @@ func DBFindUserByYandexID(yandexID string) (*model.User, error) {
 	return &user, nil
 }
 
+// pkg/db_database/databasepostgres.go
 func DBCreateUserFromOAuth(user *model.User) error {
 	db := DBConnect(model.ConnStrUsers)
 	defer db.Close()
 
 	var userID int
+
+	// Используем "student" как роль по умолчанию для OAuth пользователей
+	role := "student"
+	if user.Role != "" {
+		// Проверяем, что роль соответствует допустимым значениям
+		validRoles := map[string]bool{"student": true, "teacher": true, "admin": true}
+		if validRoles[user.Role] {
+			role = user.Role
+		}
+	}
+
+	passwordHash := "oauth_user_no_password"
+	if user.PasswordFirst != "" {
+		var err error
+		passwordHash, err = JSONJWT.HashPassword(user.PasswordFirst)
+		if err != nil {
+			return err
+		}
+	}
+
 	err := db.QueryRow(`
-		INSERT INTO users (full_name, email, google_id, yandex_id, avatar, role, username) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7) 
+		INSERT INTO users (full_name, email, google_id, yandex_id, avatar, role, username, password_hash) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
 		RETURNING user_id`,
-		user.FullName, user.Email, user.GoogleID, user.YandexID, user.Avatar, "user", user.Email,
+		user.FullName,
+		user.Email,
+		user.GoogleID,
+		user.YandexID,
+		user.Avatar,
+		role, // Используем проверенную роль
+		user.Username,
+		passwordHash,
 	).Scan(&userID)
 
 	if err != nil {
+		log.Printf("Error creating OAuth user: %v", err)
 		return err
 	}
 
 	user.ID = userID
+	user.Role = role // Обновляем роль в объекте пользователя
 	return nil
 }

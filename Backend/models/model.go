@@ -7,12 +7,12 @@ type User struct {
 	FullName       string `json:"Full_Name"`
 	Username       string `json:"Username"`
 	Email          string `json:"Email"`
-	PasswordFirst  string `json:"PasswordFHash"`
-	PasswordSecond string `json:"PasswordSHash"`
+	PasswordFirst  string `json:"PasswordFHash" db:"-"`
+	PasswordSecond string `json:"PasswordSHash" db:"-"`
 	Role           string `json:"Role"`
-	GoogleID       string `json:"GoogleID"` // Добавьте это поле
-	YandexID       string `json:"YandexID"` // Добавьте это поле
-	Avatar         string `json:"Avatar"`   // Добавьте это поле
+	GoogleID       string `json:"GoogleID"`
+	YandexID       string `json:"YandexID"`
+	Avatar         string `json:"Avatar"`
 }
 
 type Course struct {

@@ -8,46 +8,35 @@ import (
 	"os"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/yandex"
 )
 
 var (
-	GoogleOAuthConfig *oauth2.Config
 	YandexOAuthConfig *oauth2.Config
 )
 
 func InitOAuthConfig() {
-	// Временно используем хардкод для точного совпадения
-	GoogleOAuthConfig = &oauth2.Config{
-		ClientID:     "727700104291-fsvh2ld6qss6st90rln3pagj53s7k0ud.apps.googleusercontent.com",
-		ClientSecret: "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",
-		RedirectURL:  "http://localhost:8080/auth/google/callback", // порт 3000
-		Scopes: []string{
-			"https://www.googleapis.com/auth/userinfo.email",
-			"https://www.googleapis.com/auth/userinfo.profile",
-			"openid",
-		},
+	clientID := os.Getenv("YANDEX_CLIENT_ID")
+	clientSecret := os.Getenv("YANDEX_CLIENT_SECRET")
 
-		Endpoint: google.Endpoint,
+	log.Printf("Yandex OAuth Config - ClientID: %s, ClientSecret: %s", clientID, clientSecret)
+
+	if clientID == "" || clientSecret == "" {
+		log.Fatal("YANDEX_CLIENT_ID or YANDEX_CLIENT_SECRET is not set in environment variables")
 	}
 
-	log.Printf("OAuth Config Loaded: %s", GoogleOAuthConfig.RedirectURL)
-
 	YandexOAuthConfig = &oauth2.Config{
-		ClientID:     os.Getenv("YANDEX_CLIENT_ID"),
-		ClientSecret: os.Getenv("YANDEX_CLIENT_SECRET"),
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
 		RedirectURL:  "http://localhost:8080/auth/yandex/callback",
 		Scopes:       []string{"login:email", "login:info"},
 		Endpoint:     yandex.Endpoint,
 	}
-}
 
-type GoogleUserInfo struct {
-	ID      string `json:"id"`
-	Email   string `json:"email"`
-	Name    string `json:"name"`
-	Picture string `json:"picture"`
+	log.Printf("Yandex OAuth Config Loaded successfully")
+	log.Printf("Redirect URL: %s", YandexOAuthConfig.RedirectURL)
+	log.Printf("Auth URL: %s", YandexOAuthConfig.Endpoint.AuthURL)
+	log.Printf("Token URL: %s", YandexOAuthConfig.Endpoint.TokenURL)
 }
 
 type YandexUserInfo struct {
@@ -58,27 +47,6 @@ type YandexUserInfo struct {
 	ProfileImage string `json:"default_avatar_id"`
 }
 
-func GetGoogleUserInfo(token *oauth2.Token) (*GoogleUserInfo, error) {
-	client := GoogleOAuthConfig.Client(nil, token)
-	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var userInfo GoogleUserInfo
-	if err := json.Unmarshal(body, &userInfo); err != nil {
-		return nil, err
-	}
-
-	return &userInfo, nil
-}
-
 func GetYandexUserInfo(token *oauth2.Token) (*YandexUserInfo, error) {
 	client := YandexOAuthConfig.Client(nil, token)
 	resp, err := client.Get("https://login.yandex.ru/info?format=json")
@@ -87,10 +55,16 @@ func GetYandexUserInfo(token *oauth2.Token) (*YandexUserInfo, error) {
 	}
 	defer resp.Body.Close()
 
+	// Логируем статус ответа
+	log.Printf("Yandex API response status: %s", resp.Status)
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
+
+	// Логируем сырой ответ для отладки
+	log.Printf("Yandex API raw response: %s", string(body))
 
 	var userInfo YandexUserInfo
 	if err := json.Unmarshal(body, &userInfo); err != nil {

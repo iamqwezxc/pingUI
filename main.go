@@ -2,46 +2,55 @@
 package main
 
 import (
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 
 	model "github.com/iamqwezxc/pingUI/Backend/models"
 	database "github.com/iamqwezxc/pingUI/Backend/pkg/db_database"
 	"github.com/iamqwezxc/pingUI/Backend/pkg/handlers"
 	"github.com/iamqwezxc/pingUI/Backend/pkg/oauth"
+	wb "github.com/iamqwezxc/pingUI/Backend/pkg/wb_website"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	// Загрузка переменных окружения
+	if err := godotenv.Load("file.env"); err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	// Проверка обязательных переменных
+	if os.Getenv("YANDEX_CLIENT_ID") == "" {
+		log.Fatal("YANDEX_CLIENT_ID is not set")
+	}
+	if os.Getenv("YANDEX_CLIENT_SECRET") == "" {
+		log.Fatal("YANDEX_CLIENT_SECRET is not set")
+	}
+
 	database.DBConnect(model.ConnStrUsers)
 	oauth.InitOAuthConfig()
 
 	r := gin.Default()
 
-	// OAuth routes
-	r.GET("/auth/google", handlers.GoogleLoginHandler)
-	r.GET("/auth/google/callback", handlers.GoogleCallbackHandler)
+	// Yandex OAuth routes
 	r.GET("/auth/yandex", handlers.YandexLoginHandler)
 	r.GET("/auth/yandex/callback", handlers.YandexCallbackHandler)
 
-	// Регистрируем остальные маршруты из website package
-	// Если WBStarsWebSite регистрирует маршруты, нужно передать r
-	registerWebsiteRoutes(r)
+	// Debug endpoint
+	r.GET("/debug/yandex", handlers.DebugYandexConfig)
 
-	// Или если WBStarsWebSite возвращает маршруты, то:
-	// websiteRoutes := website.WBStarsWebSite()
-	// r.Use(websiteRoutes)
+	// Website routes
+	wb.WBStarsWebSite(r)
 
-	r.Run(":8080")
-}
+	r.POST("/api/bash/execute", handlers.BashExecuteHandler)
+	r.GET("/api/bash/health", handlers.BashHealthHandler)
 
-// Функция для регистрации маршрутов website
-func registerWebsiteRoutes(r *gin.Engine) {
-	// Здесь зарегистрируйте все маршруты из вашего website package
-	// Например:
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "Welcome to PingUI"})
-	})
-
-	// Добавьте другие маршруты по необходимости
+	log.Println("Server starting on :8080...")
+	if err := r.Run(":8080"); err != nil {
+		log.Fatalf("Failed to run server: %v", err)
+	}
 }
