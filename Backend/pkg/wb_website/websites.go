@@ -1,3 +1,4 @@
+// pkg/wb_website/websites.go
 package pkg
 
 import (
@@ -5,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	model "github.com/iamqwezxc/pingUI/Backend/models"
@@ -14,64 +14,56 @@ import (
 )
 
 func WBStarsWebSite(r *gin.Engine) {
-	// Маршруты для получения данных из таблиц
-	r.GET("/regist", func(c *gin.Context) {
+	// ==================== USERS ====================
+	// GET - получить всех пользователей
+	r.GET("/users", func(c *gin.Context) {
 		db := database.DBConnect(model.ConnStrUsers)
 		defer db.Close()
 
-		err := database.TakeTable(db, c, "users")
+		users, err := database.GetSlice(db, "users")
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"users":   users,
+			"count":   len(users),
+		})
 	})
 
-	r.GET("/courses", func(c *gin.Context) {
+	// GET - получить пользователя по ID
+	r.GET("/users/:id", func(c *gin.Context) {
+		userID, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+			return
+		}
+
 		db := database.DBConnect(model.ConnStrUsers)
 		defer db.Close()
 
-		err := database.TakeTable(db, c, "courses")
+		var user model.User
+		err = db.QueryRow("SELECT * FROM users WHERE user_id = $1", userID).Scan(
+			&user.ID, &user.FullName, &user.Username, &user.Email,
+			&user.PasswordFirst, &user.PasswordSecond, &user.Role,
+			&user.GoogleID, &user.YandexID, &user.Avatar,
+		)
+
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return
 		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"user":    user,
+		})
 	})
 
-	r.GET("/lessons", func(c *gin.Context) {
-		db := database.DBConnect(model.ConnStrUsers)
-		defer db.Close()
-
-		err := database.TakeTable(db, c, "lessons")
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-	})
-
-	r.GET("/materials", func(c *gin.Context) {
-		db := database.DBConnect(model.ConnStrUsers)
-		defer db.Close()
-
-		err := database.TakeTable(db, c, "materials")
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-	})
-
-	r.GET("/enrollments", func(c *gin.Context) {
-		db := database.DBConnect(model.ConnStrUsers)
-		defer db.Close()
-
-		err := database.TakeTable(db, c, "enrollments")
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-	})
-
-	// Маршруты для добавления данных
-	r.POST("/regist", func(c *gin.Context) {
+	// POST - создать пользователя
+	r.POST("/users", func(c *gin.Context) {
 		user, err := JSONJWT.JSONtoStruct[model.User](c)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -86,12 +78,119 @@ func WBStarsWebSite(r *gin.Engine) {
 			}
 
 			database.DBAddDataUsers(user)
-			c.JSON(http.StatusOK, gin.H{"success": true})
+			c.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"message": "User created successfully",
+			})
 		} else {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Passwords do not match"})
 		}
 	})
 
+	// PATCH - обновить пользователя
+	r.PATCH("/users/:id", func(c *gin.Context) {
+		userID, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+			return
+		}
+
+		var userUpdates model.User
+		if err := c.ShouldBindJSON(&userUpdates); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
+			return
+		}
+
+		err = database.DBUpdateUserByID(userID, userUpdates)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": fmt.Sprintf("User %d updated successfully", userID),
+		})
+	})
+
+	// DELETE - удалить пользователя
+	r.DELETE("/users/:id", func(c *gin.Context) {
+		userID, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+			return
+		}
+
+		err = database.DBDeleteUserByID(userID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": fmt.Sprintf("User %d deleted successfully", userID),
+		})
+	})
+
+	// ==================== COURSES ====================
+	// GET - все курсы
+	r.GET("/courses", func(c *gin.Context) {
+		db := database.DBConnect(model.ConnStrUsers)
+		defer db.Close()
+
+		rows, err := db.Query("SELECT * FROM courses")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		defer rows.Close()
+
+		var courses []model.Course
+		for rows.Next() {
+			var course model.Course
+			err := rows.Scan(&course.ID, &course.Title, &course.Description, &course.Thumbnail_url, &course.Instructor_id)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			courses = append(courses, course)
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"courses": courses,
+		})
+	})
+
+	// GET - курс по ID
+	r.GET("/courses/:id", func(c *gin.Context) {
+		courseID, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid course ID"})
+			return
+		}
+
+		db := database.DBConnect(model.ConnStrUsers)
+		defer db.Close()
+
+		var course model.Course
+		err = db.QueryRow("SELECT * FROM courses WHERE id = $1", courseID).Scan(
+			&course.ID, &course.Title, &course.Description, &course.Thumbnail_url, &course.Instructor_id,
+		)
+
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Course not found"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"course":  course,
+		})
+	})
+
+	// POST - создать курс
 	r.POST("/courses", func(c *gin.Context) {
 		course, err := JSONJWT.JSONtoStruct[model.Course](c)
 		if err != nil {
@@ -100,9 +199,110 @@ func WBStarsWebSite(r *gin.Engine) {
 		}
 
 		database.DBAddDataCourse(course)
-		c.JSON(http.StatusOK, gin.H{"success": true})
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "Course created successfully",
+		})
 	})
 
+	// PATCH - обновить курс
+	r.PATCH("/courses/:id", func(c *gin.Context) {
+		courseID, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid course ID"})
+			return
+		}
+
+		var courseUpdates model.Course
+		if err := c.ShouldBindJSON(&courseUpdates); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
+			return
+		}
+
+		// Здесь должна быть функция обновления курса
+		// database.DBUpdateCourseByID(courseID, courseUpdates)
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": fmt.Sprintf("Course %d update endpoint - implement DBUpdateCourseByID", courseID),
+		})
+	})
+
+	// DELETE - удалить курс
+	r.DELETE("/courses/:id", func(c *gin.Context) {
+		courseID, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid course ID"})
+			return
+		}
+
+		// Здесь должна быть функция удаления курса
+		// database.DBDeleteCourseByID(courseID)
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": fmt.Sprintf("Course %d delete endpoint - implement DBDeleteCourseByID", courseID),
+		})
+	})
+
+	// ==================== LESSONS ====================
+	// GET - все уроки
+	r.GET("/lessons", func(c *gin.Context) {
+		db := database.DBConnect(model.ConnStrUsers)
+		defer db.Close()
+
+		rows, err := db.Query("SELECT * FROM lessons")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		defer rows.Close()
+
+		var lessons []model.Lesson
+		for rows.Next() {
+			var lesson model.Lesson
+			err := rows.Scan(&lesson.ID, &lesson.Course_id, &lesson.Title, &lesson.Content, &lesson.Video_url, &lesson.Lesson_order)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			lessons = append(lessons, lesson)
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"lessons": lessons,
+		})
+	})
+
+	// GET - урок по ID
+	r.GET("/lessons/:id", func(c *gin.Context) {
+		lessonID, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid lesson ID"})
+			return
+		}
+
+		db := database.DBConnect(model.ConnStrUsers)
+		defer db.Close()
+
+		var lesson model.Lesson
+		err = db.QueryRow("SELECT * FROM lessons WHERE lesson_id = $1", lessonID).Scan(
+			&lesson.ID, &lesson.Course_id, &lesson.Title, &lesson.Content, &lesson.Video_url, &lesson.Lesson_order,
+		)
+
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Lesson not found"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"lesson":  lesson,
+		})
+	})
+
+	// POST - создать урок
 	r.POST("/lessons", func(c *gin.Context) {
 		lesson, err := JSONJWT.JSONtoStruct[model.Lesson](c)
 		if err != nil {
@@ -111,9 +311,43 @@ func WBStarsWebSite(r *gin.Engine) {
 		}
 
 		database.DBAddDataLesson(lesson)
-		c.JSON(http.StatusOK, gin.H{"success": true})
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "Lesson created successfully",
+		})
 	})
 
+	// ==================== MATERIALS ====================
+	// GET - все материалы
+	r.GET("/materials", func(c *gin.Context) {
+		db := database.DBConnect(model.ConnStrUsers)
+		defer db.Close()
+
+		rows, err := db.Query("SELECT * FROM materials")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		defer rows.Close()
+
+		var materials []model.Material
+		for rows.Next() {
+			var material model.Material
+			err := rows.Scan(&material.ID, &material.Lesson_id, &material.Title, &material.File_url, &material.TypeOfMaterial)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			materials = append(materials, material)
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success":   true,
+			"materials": materials,
+		})
+	})
+
+	// POST - создать материал
 	r.POST("/materials", func(c *gin.Context) {
 		material, err := JSONJWT.JSONtoStruct[model.Material](c)
 		if err != nil {
@@ -122,9 +356,43 @@ func WBStarsWebSite(r *gin.Engine) {
 		}
 
 		database.DBAddDataMaterial(material)
-		c.JSON(http.StatusOK, gin.H{"success": true})
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "Material created successfully",
+		})
 	})
 
+	// ==================== ENROLLMENTS ====================
+	// GET - все записи на курсы
+	r.GET("/enrollments", func(c *gin.Context) {
+		db := database.DBConnect(model.ConnStrUsers)
+		defer db.Close()
+
+		rows, err := db.Query("SELECT * FROM enrollments")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		defer rows.Close()
+
+		var enrollments []model.Enrollment
+		for rows.Next() {
+			var enrollment model.Enrollment
+			err := rows.Scan(&enrollment.ID, &enrollment.User_id, &enrollment.Course_id)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			enrollments = append(enrollments, enrollment)
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success":     true,
+			"enrollments": enrollments,
+		})
+	})
+
+	// POST - записаться на курс
 	r.POST("/enrollments", func(c *gin.Context) {
 		enrollment, err := JSONJWT.JSONtoStruct[model.Enrollment](c)
 		if err != nil {
@@ -133,81 +401,39 @@ func WBStarsWebSite(r *gin.Engine) {
 		}
 
 		database.DBAddDataEnrollment(enrollment)
-		c.JSON(http.StatusOK, gin.H{"success": true})
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "Enrollment created successfully",
+		})
 	})
 
-	// Маршруты для обновления и удаления пользователей
-	r.PUT("/users/edit/:id", func(c *gin.Context) {
-		userIDStr := c.Param("id")
-		userID, err := strconv.Atoi(userIDStr)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid user ID format"})
-			return
-		}
-
-		var userUpdates model.User
-		if err := c.ShouldBindJSON(&userUpdates); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"Error":   "Invalid JSON payload: " + err.Error(),
-			})
-			return
-		}
-
-		err = database.DBUpdateUserByID(userID, userUpdates)
-		if err != nil {
-			errMsg := err.Error()
-			if strings.Contains(errMsg, "not found") {
-				c.JSON(http.StatusNotFound, gin.H{"success": false, "error": errMsg})
-			} else if strings.Contains(errMsg, "no fields provided") {
-				c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": errMsg})
-			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to update user: " + errMsg})
-			}
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"success": true, "message": fmt.Sprintf("User %d updated successfully", userID)})
-	})
-
-	r.PUT("/users/delete/:id", func(c *gin.Context) {
-		userIDStr := c.Param("id")
-		userID, err := strconv.Atoi(userIDStr)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid user ID format"})
-			return
-		}
-
-		err = database.DBDeleteUserByID(userID)
-		if err != nil {
-			errMsg := err.Error()
-			if strings.Contains(errMsg, "not found") {
-				c.JSON(http.StatusNotFound, gin.H{"success": false, "error": errMsg})
-			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to delete user: " + errMsg})
-			}
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"success": true, "message": fmt.Sprintf("User %d deleted successfully", userID)})
-	})
-
-	// Маршрут для логина
-	r.GET("/login", func(c *gin.Context) {
-		c.String(http.StatusOK, "Логин")
-	})
-
-	r.POST("/login", func(c *gin.Context) {
-		db := database.DBConnect(model.ConnStrUsers)
-		defer db.Close()
-
-		c.String(http.StatusOK, fmt.Sprintf("%v", db))
-	})
-
-	// Корневой маршрут для проверки работы сервера
+	// ==================== ROOT ====================
 	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "Server is running"})
+		c.JSON(200, gin.H{
+			"message": "Server is running",
+			"routes": []string{
+				"GET    /users",
+				"GET    /users/:id",
+				"POST   /users",
+				"PATCH  /users/:id",
+				"DELETE /users/:id",
+				"GET    /courses",
+				"GET    /courses/:id",
+				"POST   /courses",
+				"PATCH  /courses/:id",
+				"DELETE /courses/:id",
+				"GET    /lessons",
+				"GET    /lessons/:id",
+				"POST   /lessons",
+				"GET    /materials",
+				"POST   /materials",
+				"GET    /enrollments",
+				"POST   /enrollments",
+				"POST   /api/bash/execute",
+				"GET    /api/bash/health",
+			},
+		})
 	})
 
-	log.Println("Website routes registered successfully")
+	log.Println("All CRUD routes registered successfully")
 }

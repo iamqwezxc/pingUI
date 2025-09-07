@@ -143,6 +143,45 @@ func DBAddDataUsers(user model.User) {
 	defer db.Close()
 }
 
+// Добавьте эти функции в pkg/db_database/databasepostgres.go
+
+// DBUpdateCourseByID - обновление курса
+func DBUpdateCourseByID(courseID int, courseUpdates model.Course) error {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	_, err := db.Exec(`
+		UPDATE courses 
+		SET title = $1, description = $2, thumbnail_url = $3, instructor_id = $4 
+		WHERE id = $5`,
+		courseUpdates.Title, courseUpdates.Description,
+		courseUpdates.Thumbnail_url, courseUpdates.Instructor_id, courseID,
+	)
+
+	return err
+}
+
+// DBDeleteCourseByID - удаление курса
+func DBDeleteCourseByID(courseID int) error {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	_, err := db.Exec("DELETE FROM courses WHERE id = $1", courseID)
+	return err
+}
+
+// DBGetCourseByID - получение курса по ID
+func DBGetCourseByID(courseID int) (*model.Course, error) {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	var course model.Course
+	err := db.QueryRow("SELECT * FROM courses WHERE id = $1", courseID).Scan(
+		&course.ID, &course.Title, &course.Description, &course.Thumbnail_url, &course.Instructor_id,
+	)
+
+	return &course, err
+}
 func DBAddDataCourse(course model.Course) {
 	db := DBConnect(model.ConnStrUsers)
 	_, err := db.Exec(
@@ -214,7 +253,19 @@ func GetSlice(db *sql.DB, tableName string) ([]model.User, error) {
 	for rows.Next() {
 		var user model.User
 
-		err := rows.Scan(&user.ID, &user.FullName, &user.Username, &user.Email, &user.PasswordFirst, &user.PasswordSecond, &user.Role)
+		// Сканируем ВСЕ 10 полей
+		err := rows.Scan(
+			&user.ID,
+			&user.FullName,
+			&user.Username,
+			&user.Email,
+			&user.PasswordFirst,
+			&user.PasswordSecond,
+			&user.Role,
+			&user.GoogleID,
+			&user.YandexID,
+			&user.Avatar,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -226,6 +277,171 @@ func GetSlice(db *sql.DB, tableName string) ([]model.User, error) {
 	}
 
 	return users, nil
+}
+
+// DBGetUserByID - получение пользователя по ID
+func DBGetUserByID(userID int) (*model.User, error) {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	var user model.User
+	err := db.QueryRow(`
+        SELECT user_id, full_name, username, email, password_hash, role, google_id, yandex_id, avatar 
+        FROM users WHERE user_id = $1`,
+		userID,
+	).Scan(
+		&user.ID, &user.FullName, &user.Username, &user.Email,
+		&user.PasswordFirst, &user.Role, &user.GoogleID, &user.YandexID, &user.Avatar,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+// DBGetAllCourses - получение всех курсов
+func DBGetAllCourses() ([]model.Course, error) {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	rows, err := db.Query("SELECT * FROM courses")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var courses []model.Course
+	for rows.Next() {
+		var course model.Course
+		err := rows.Scan(&course.ID, &course.Title, &course.Description, &course.Thumbnail_url, &course.Instructor_id)
+		if err != nil {
+			return nil, err
+		}
+		courses = append(courses, course)
+	}
+
+	return courses, nil
+}
+
+// DBGetAllLessons - получение всех уроков
+func DBGetAllLessons() ([]model.Lesson, error) {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	rows, err := db.Query("SELECT * FROM lessons")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var lessons []model.Lesson
+	for rows.Next() {
+		var lesson model.Lesson
+		err := rows.Scan(&lesson.ID, &lesson.Course_id, &lesson.Title, &lesson.Content, &lesson.Video_url, &lesson.Lesson_order)
+		if err != nil {
+			return nil, err
+		}
+		lessons = append(lessons, lesson)
+	}
+
+	return lessons, nil
+}
+
+// DBGetAllMaterials - получение всех материалов
+func DBGetAllMaterials() ([]model.Material, error) {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	rows, err := db.Query("SELECT * FROM materials")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var materials []model.Material
+	for rows.Next() {
+		var material model.Material
+		err := rows.Scan(&material.ID, &material.Lesson_id, &material.Title, &material.File_url, &material.TypeOfMaterial)
+		if err != nil {
+			return nil, err
+		}
+		materials = append(materials, material)
+	}
+
+	return materials, nil
+}
+
+// DBGetAllEnrollments - получение всех записей
+func DBGetAllEnrollments() ([]model.Enrollment, error) {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	rows, err := db.Query("SELECT * FROM enrollments")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var enrollments []model.Enrollment
+	for rows.Next() {
+		var enrollment model.Enrollment
+		err := rows.Scan(&enrollment.ID, &enrollment.User_id, &enrollment.Course_id)
+		if err != nil {
+			return nil, err
+		}
+		enrollments = append(enrollments, enrollment)
+	}
+
+	return enrollments, nil
+}
+
+// DBGetLessonByID - получение урока по ID
+func DBGetLessonByID(lessonID int) (*model.Lesson, error) {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	var lesson model.Lesson
+	err := db.QueryRow("SELECT * FROM lessons WHERE lesson_id = $1", lessonID).Scan(
+		&lesson.ID, &lesson.Course_id, &lesson.Title, &lesson.Content, &lesson.Video_url, &lesson.Lesson_order,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+	return &lesson, nil
+}
+
+// DBGetMaterialByID - получение материала по ID
+func DBGetMaterialByID(materialID int) (*model.Material, error) {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	var material model.Material
+	err := db.QueryRow("SELECT * FROM materials WHERE material_id = $1", materialID).Scan(
+		&material.ID, &material.Lesson_id, &material.Title, &material.File_url, &material.TypeOfMaterial,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+	return &material, nil
+}
+
+// DBGetEnrollmentByID - получение записи по ID
+func DBGetEnrollmentByID(enrollmentID int) (*model.Enrollment, error) {
+	db := DBConnect(model.ConnStrUsers)
+	defer db.Close()
+
+	var enrollment model.Enrollment
+	err := db.QueryRow("SELECT * FROM enrollments WHERE enrollment_id = $1", enrollmentID).Scan(
+		&enrollment.ID, &enrollment.User_id, &enrollment.Course_id,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+	return &enrollment, nil
 }
 func TakeTable(db *sql.DB, c *gin.Context, tableName string) error {
 	rows, err := db.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
